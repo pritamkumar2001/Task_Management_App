@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, FlatList, Animated, Alert, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import { AppContext } from '../../context/AppContext';
@@ -9,8 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { getActivityList, getUserTasks } from '../services/productServices';
 import Loader from '../components/old_components/Loader';
-import { ButtonGroup } from '@rneui/themed';
 import BottomSheetModal from '../components/BottomSheetModal';
+import { Feather } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -18,11 +18,11 @@ const Container = styled.View`
   background-color: #f5f5f5;
 `;
 
-const GradientBackground = styled(LinearGradient).attrs({
-  colors: ['#ffd6b3', '#f7dce0'],
+const GradientBackground = styled(LinearGradient).attrs((props) => ({
+  colors: ['#6a11cb', '#2575fc'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   align-items: center;
   height: 100%;
 `;
@@ -30,10 +30,13 @@ const GradientBackground = styled(LinearGradient).attrs({
 const CompanyContainer = styled.View`
   flex-direction: row;
   width: 100%;
-  padding: 10px;
-  background-color: #fb9032;
+  padding: 20px;
+  background-color: #6A1B9A;
   align-items: center;
   gap: 20px;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  elevation: 5;
 `;
 
 const CompanyTextContainer = styled.View`
@@ -42,16 +45,16 @@ const CompanyTextContainer = styled.View`
 `;
 
 const CompanyName = styled.Text`
-  font-size: 22px;
+  font-size: 24px;
   font-weight: bold;
   margin: 10px 0;
-  color: #333333;
+  color: #ffffff;
 `;
 
 const SubHeader = styled.Text`
   font-size: 16px;
   margin-bottom: 20px;
-  color: #555555;
+  color: #ffffff;
 `;
 
 const LogoContainer = styled.View`
@@ -63,6 +66,7 @@ const LogoContainer = styled.View`
   justify-content: center;
   margin-bottom: 15px;
   margin-top: 5%;
+  elevation: 5;
 `;
 
 const Logo = styled.Image.attrs(() => ({
@@ -76,6 +80,47 @@ const Logo = styled.Image.attrs(() => ({
 const ProfileTextContainer = styled.View`
   display: flex;
   align-items: center;
+  padding: 20px;
+`;
+
+const TaskHeader = styled.Text`
+  font-size: 22px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 20px;
+`;
+
+const TaskListContainer = styled.View`
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  background-color: #ffffff;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  elevation: 5;
+`;
+
+const FilterButton = styled(TouchableOpacity)`
+  flex-direction: row;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 25px;
+  border: 1px solid #454545;
+  margin-bottom: 10px;
+  margin-horizontal: 10px;
+`;
+
+const FilterButtonText = styled.Text`
+  font-size: 16px;
+  color: #454545;
+  margin-left: 10px;
+`;
+
+const ButtonContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-around;
+  width: 100%;
   padding: 10px;
 `;
 
@@ -90,9 +135,15 @@ const HomePage = ({ navigation }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isDateModalVisible, setDateModalVisible] = useState(false);
   const [isStatusModalVisible, setStatusModalVisible] = useState(false);
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
     fetchData();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useEffect(() => {
@@ -115,12 +166,13 @@ const HomePage = ({ navigation }) => {
       fetchTasks(selectedIndex);
     } catch (error) {
       console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to fetch data. Please try again later.');
     }
     setLoading(false);
   };
 
   const fetchTasks = async (index) => {
-    if (!route?.name) return; // Ensure route name exists
+    if (!route?.name) return;
 
     let taskType = 'ALL'; // Default case
 
@@ -135,16 +187,9 @@ const HomePage = ({ navigation }) => {
       setFilterData(res.data || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to fetch tasks. Please try again later.');
     }
     setLoading(false);
-  };
-
-  const handleIconPress = () => {
-    console.log('Icon Pressed');
-  };
-
-  const handleIconName1Press = () => {
-    console.log('Icon Name 1 Pressed');
   };
 
   const handleSelectTaskType = (selectedOption) => {
@@ -154,21 +199,27 @@ const HomePage = ({ navigation }) => {
     else if (selectedOption === 'PAST') newIndex = 2;
     else if (selectedOption === 'ALL') newIndex = 3;
 
-    setSelectedIndex(newIndex); // Update selected index
-    fetchTasks(newIndex); // Fetch tasks based on selection
+    setSelectedIndex(newIndex);
+    fetchTasks(newIndex);
     setDateModalVisible(false);
   };
 
   const handleSelectStatus = (status) => {
     console.log('Selected Status:', status);
+    // Filter tasks based on status
+    const filteredTasks = filterData.filter((task) => task.task_status === status);
+    setFilterData(filteredTasks);
     setStatusModalVisible(false);
   };
 
-  console.log('Profile===',profile);
+  const handleMarkAsCompleted = (taskId) => {
+    console.log(`Task ${taskId} marked as completed`);
+    fetchTasks(selectedIndex);
+  };
 
   return (
     <Container>
-      <StatusBar barStyle="light-content" backgroundColor="rgb(252, 128, 20)" />
+      <StatusBar barStyle="light-content" backgroundColor="#6a11cb" />
       <GradientBackground>
         <Loader visible={loading} />
         <CompanyContainer>
@@ -182,57 +233,45 @@ const HomePage = ({ navigation }) => {
         </CompanyContainer>
 
         <ProfileTextContainer>
-          <CompanyName>My Tasks</CompanyName>
+          <TaskHeader>My Tasks</TaskHeader>
         </ProfileTextContainer>
 
-        <ButtonGroup
-          buttons={['Days', 'Status']}
-          selectedIndex={selectedIndex}
-          onPress={(value) => {
-            if (value === 0) {
-              setDateModalVisible(true); // Open Date Selection Modal
-            } else {
-              setStatusModalVisible(true); // Open Status Selection Modal
-            }
-          }}
-          buttonStyle={{
-            backgroundColor: '#ffffff',
-            borderColor: '#454545',
-            borderWidth: 1,
-            borderRadius: 25,
-          }}
-          containerStyle={{
-            marginBottom: 10,
-            marginHorizontal: 10,
-            backgroundColor: 'transparent',
-            borderWidth: 0,
-            gap: 1,
-          }}
-          selectedButtonStyle={{ backgroundColor: '#4491FE' }}
-          buttonContainerStyle={{ borderColor: 'transparent', borderWidth: 0 }}
-        />
+        {/* Two Filter Buttons */}
+        <ButtonContainer>
+          <FilterButton onPress={() => setDateModalVisible(true)}>
+            <Feather name="calendar" size={20} color="#454545" />
+            <FilterButtonText>Filter by Day</FilterButtonText>
+          </FilterButton>
+          <FilterButton onPress={() => setStatusModalVisible(true)}>
+            <Feather name="filter" size={20} color="#454545" />
+            <FilterButtonText>Filter by Status</FilterButtonText>
+          </FilterButton>
+        </ButtonContainer>
 
-        <View style={{ zIndex: 0 }}>
-          <FlatList
-            data={filterData}
-            renderItem={({ item }) => (
-              <CardItem
-                data={item}
-                navigation={navigation}
-                colour={'#4491FE'}
-                icon="assignment-ind"
-                handleIconPress={handleIconPress}
-                handleDisplayPress={() => {}}
-                buttonTittle="Product Interest"
-                screen="TaskInterest"
-                iconName1="preview"
-                handleIconName1Press={handleIconName1Press}
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
+        <TaskListContainer>
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <FlatList
+              data={filterData}
+              renderItem={({ item }) => (
+                <CardItem
+                  data={item}
+                  navigation={navigation}
+                  onMarkAsCompleted={handleMarkAsCompleted}
+                  colour={'#2575fc'}
+                  icon="assignment-ind"
+                  handleIconPress={() => {}}
+                  handleDisplayPress={() => {}}
+                  buttonTittle="Product Interest"
+                  screen="TaskInterest"
+                  iconName1="preview"
+                  handleIconName1Press={() => {}}
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+            />
+          </Animated.View>
+        </TaskListContainer>
       </GradientBackground>
 
       {/* Task Date Selection Modal */}
@@ -246,7 +285,7 @@ const HomePage = ({ navigation }) => {
       {/* Task Status Selection Modal */}
       <BottomSheetModal
         visible={isStatusModalVisible}
-        options={['Planned', 'Completed']}
+        options={['Planned', 'Completed', 'Not Planned']}
         onSelect={handleSelectStatus}
         onClose={() => setStatusModalVisible(false)}
       />

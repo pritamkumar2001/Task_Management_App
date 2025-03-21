@@ -1,21 +1,28 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { addEmpLeave, getEmpLeavedata, addClaim, getEmpClaimdata, getExpenseItemList, getProjectList, getEmpAttendanceData, getEmpHolidayData, empCheckData, processClaim, getClaimApproverList, getActivities, getActivityQc, processActivity, getInventoryItemList, processItemInv, userTaskListURL, empLoginURL } from "../services/ConstantServies";
 import { authAxios, authAxiosFilePost, authAxiosPost } from "./HttpMethod";
 
-
-export function getUserTasks(task_type, customer_id, lead_id) {
+export async function getUserTasks(task_type, customer_id, lead_id) {
   let data = {};
-  if (task_type){
-      data['task_type'] = task_type;
+  
+  // Fetch emp_id asynchronously
+  const emp_id = await AsyncStorage.getItem('empId');
+
+  if (task_type) {
+    data['task_type'] = task_type;
   }
-  if (customer_id){
-      data['customer_id'] = customer_id;
+  if (customer_id) {
+    data['customer_id'] = customer_id;
   }
-  if (lead_id){
-      data['lead_id'] = lead_id;
+  if (emp_id) {
+    data['emp_id'] = emp_id;
+  }
+  if (lead_id) {
+    data['lead_id'] = lead_id;
   }
 
-  // console.log('getUserTasks', task_type, userTaskListURL, data)
-  return authAxios(userTaskListURL, data)
+  console.log('getUserTasks', data)
+  return authAxios(userTaskListURL, data);
 }
 
 export function getEmpLeave(leave_type , emp_id, year) {
