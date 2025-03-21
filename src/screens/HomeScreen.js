@@ -212,6 +212,8 @@ const HomePage = ({ navigation }) => {
     setStatusModalVisible(false);
   };
 
+  console.log("Task List===",filterData)
+
   const handleMarkAsCompleted = (taskId) => {
     console.log(`Task ${taskId} marked as completed`);
     fetchTasks(selectedIndex);
