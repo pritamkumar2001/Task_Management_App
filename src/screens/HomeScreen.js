@@ -171,6 +171,9 @@ const HomePage = ({ navigation }) => {
     setLoading(false);
   };
 
+  // console.log("Activities===",activities);
+  
+
   const fetchTasks = async (index) => {
     if (!route?.name) return;
 
@@ -185,6 +188,7 @@ const HomePage = ({ navigation }) => {
     try {
       const res = await getUserTasks(taskType, '', '');
       setFilterData(res.data || []);
+      // console.log("My Task List filterData====>",filterData)
     } catch (error) {
       console.error('Error fetching tasks:', error);
       Alert.alert('Error', 'Failed to fetch tasks. Please try again later.');

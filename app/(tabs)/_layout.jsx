@@ -38,6 +38,16 @@ const _layout = () => {
           tabBarIcon: ({ color }) => <FontAwesome name="home" size={24} color={color} />,
         }}
       />
+
+      <Tabs.Screen
+        name="newHome"
+        options={{
+          title: 'NewHome',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <FontAwesome name="home" size={24} color={color} />,
+        }}
+      />
+
       <Tabs.Screen
         name="activity"
         options={{
