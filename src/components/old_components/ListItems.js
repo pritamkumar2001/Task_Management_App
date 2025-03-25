@@ -1,92 +1,259 @@
-import React, {useState} from 'react'
-import {
-    ListView,
-    ListViewHidden,
-    ListButton,
-    TodoText,
-    TodoDate,
-    HiddenButton,
-    SwipedTodoText,
-    ListRowView,
-    colors
-} from './../Styles/appStyle';
-import {Ionicons} from "@expo/vector-icons";
-import { MaterialIcons } from '@expo/vector-icons';
-import {SwipeListView } from 'react-native-swipe-list-view';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { SwipeListView } from 'react-native-swipe-list-view';
 
-const ListItems = ({todos, setTodos, handleTriggerEdit, navigation }) => {
+const ListItems = ({ todos, setTodos, handleTriggerEdit, navigation }) => {
+    const [swipedRow, setSwipedRow] = useState(null);
 
-    const [swipedRow, setSwipedRow] = useState(null); 
+    // Handle task deletion
+    const handleDeleteTodo = (rowMap, rowKey) => {
+        Alert.alert(
+            'Delete Task',
+            'Are you sure you want to delete this task?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                { 
+                    text: 'Delete', 
+                    onPress: () => {
+                        const newTodos = todos.filter(todo => todo.key !== rowKey);
+                        setTodos(newTodos);
+                    }
+                }
+            ]
+        );
+    };
 
-    const handleDeleteTodo= (rowMap, rowKey) => {
-        const newTodos = [...todos];
-        const todoIndex = todos.findIndex((todo) => todo.key === rowKey);
-        newTodos.splice(todoIndex, 1);
+    // Toggle task completion status
+    const handleMarkComplete = (rowKey) => {
+        const newTodos = todos.map(todo => {
+            if (todo.key === rowKey) {
+                return {
+                    ...todo, 
+                    status: todo.status === 'Complete' ? 'Pending' : 'Complete',
+                    completed: !todo.completed
+                };
+            }
+            return todo;
+        });
         setTodos(newTodos);
-    }  
+    };
 
-  return (
-    <SwipeListView 
-        data={todos}
-        renderItem={(data) => {
-            const RowText = data.item.key == swipedRow ? SwipedTodoText : TodoText;
-            return(
-                <ListView
-                    underlayColor={colors.white}
-                    onPress={() => {
-                        handleTriggerEdit(data.item)
-                    }}
-                >
-                    <>
-                        <RowText>{data.item.title}</RowText>
-                        <TodoDate>{data.item.date}</TodoDate>
-                        <ListRowView>
-                        <ListButton onPress={() => navigation.navigate("AddLead", {task: data.item.title},)}>
-                            <Ionicons name="person-add" size={24} color={'#4491FE'} />
-                        </ListButton>
-                        <ListButton onPress={() => navigation.navigate("AddTodoTask", {task: data.item.title},)}>
-                            <MaterialIcons name="add-task" size={24} color={'#4491FE'}  />
-                        </ListButton>
-                        </ListRowView>
-                    </>    
-                </ListView>
+    // Render status tag with appropriate colors
+    const renderStatusTag = (status) => {
+        const statusConfig = {
+            complete: { bgColor: '#e8f9f0', textColor: '#17c27b' },
+            pending: { bgColor: '#fff8e8', textColor: '#ffb840' },
+            todo: { bgColor: '#ffe8e8', textColor: '#ff5a5a' },
+            planned: { bgColor: '#ffe8e8', textColor: '#ff5a5a' },
+            default: { bgColor: '#ffffff', textColor: '#000000' }
+        };
+
+        const config = statusConfig[status.toLowerCase()] || statusConfig.default;
+        
+        return (
+            <View style={[styles.statusTag, { backgroundColor: config.bgColor }]}>
+                <Text style={[styles.statusText, { color: config.textColor }]}>
+                    {status}
+                </Text>
+            </View>
+        );
+    };
+
+    // Render each task card
+    const renderTaskCard = ({ item }) => (
+        <TouchableOpacity 
+            style={[
+                styles.cardContainer,
+                item.completed && styles.completedTask
+            ]}
+            onPress={() => handleTriggerEdit(item)}
+            activeOpacity={0.8}
+        >
+            <View style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.category}>{item.category || 'General Task'}</Text>
+                    {renderStatusTag(item.status)}
+                </View>
                 
-            )
-        }}
-        renderHiddenItem={(data, rowMap) => {
-            return(
-                <>
-                <ListViewHidden>
-                    <HiddenButton
-                        onPress={() => handleDeleteTodo(rowMap, data.item.key)}
-                    >
-                    <Ionicons name="trash" size={25} color={'#4491FE'} />
-                    </HiddenButton>
+                <Text 
+                    style={[
+                        styles.title,
+                        item.completed && styles.completedTitle
+                    ]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                >
+                    {item.title}
+                </Text>
+                
+                <View style={styles.detailsContainer}>
+                    <View style={styles.detailItem}>
+                        <Ionicons name="calendar" size={16} color="#9c27b0" />
+                        <Text style={styles.detailText}>
+                            {item.taskDate || 'No date'}
+                        </Text>
+                    </View>
                     
-                </ListViewHidden>
-                </>
-            )
-        }}
-        leftOpenValue={80}
-        previewRowKey={"1"}
-        previewOpenValue={80}
-        previewOpenDelay={3000}
-        disableLeftSwipe={true}
-        showsVerticalScrollIndicator={false}
-        style={{
-            flex: 1, paddingBottom: 30, marginBottom: 40,margin:8,
-        }}
-        onRowOpen={(rowKey) => {
-            setSwipedRow(rowKey);
+                    <View style={styles.detailItem}>
+                        <Ionicons name="time" size={16} color="#9c27b0" />
+                        <Text style={styles.detailText}>
+                            {item.time || 'No time'}
+                        </Text>
+                    </View>
+                    
+                    {item.customer && (
+                        <View style={styles.detailItem}>
+                            <Ionicons name="person" size={16} color="#9c27b0" />
+                            <Text style={styles.detailText} numberOfLines={1} ellipsizeMode="tail">
+                                {item.customer}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
 
-        }}
-        onRowClose={() => {
-            setSwipedRow(null);
+    // Render hidden swipe actions
+    const renderHiddenActions = (data, rowMap) => (
+        <View style={styles.hiddenActionsContainer}>
+            <TouchableOpacity 
+                style={[styles.actionButton, styles.completeButton]}
+                onPress={() => handleMarkComplete(data.item.key)}
+            >
+                <MaterialIcons 
+                    name={data.item.completed ? "check-box" : "check-box-outline-blank"} 
+                    size={24} 
+                    color="white" 
+                />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => handleDeleteTodo(rowMap, data.item.key)}
+            >
+                <Ionicons name="trash" size={24} color="white" />
+            </TouchableOpacity>
+        </View>
+    );
 
-        }}
-    />
-    
-  )
-}
+    return (
+        <SwipeListView 
+            data={todos}
+            renderItem={renderTaskCard}
+            renderHiddenItem={renderHiddenActions}
+            leftOpenValue={75}
+            rightOpenValue={-150}
+            previewRowKey={"1"}
+            previewOpenValue={-150}
+            previewOpenDelay={3000}
+            disableLeftSwipe={false}
+            showsVerticalScrollIndicator={false}
+            style={styles.listContainer}
+            contentContainerStyle={styles.listContentContainer}
+            onRowOpen={(rowKey) => setSwipedRow(rowKey)}
+            onRowClose={() => setSwipedRow(null)}
+            keyExtractor={(item) => item.key}
+        />
+    );
+};
 
-export default ListItems
+const styles = StyleSheet.create({
+    listContainer: {
+        flex: 1,
+        width: '100%',
+    },
+    listContentContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 30,
+    },
+    cardContainer: {
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        marginVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    completedTask: {
+        opacity: 0.8,
+        backgroundColor: '#f9f9f9',
+    },
+    cardContent: {
+        padding: 16,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    category: {
+        color: '#9c27b0',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        color: '#333',
+    },
+    completedTitle: {
+        textDecorationLine: 'line-through',
+        color: '#888',
+    },
+    detailsContainer: {
+        marginTop: 8,
+    },
+    detailItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    detailText: {
+        color: '#666',
+        marginLeft: 8,
+        fontSize: 14,
+        flexShrink: 1,
+    },
+    statusTag: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
+        textTransform: 'capitalize',
+    },
+    hiddenActionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        height: '100%',
+        marginVertical: 8,
+    },
+    actionButton: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 75,
+        height: '100%',
+    },
+    deleteButton: {
+        backgroundColor: '#ff5a5a',
+    },
+    completeButton: {
+        backgroundColor: '#17c27b',
+    },
+});
+
+export default ListItems;

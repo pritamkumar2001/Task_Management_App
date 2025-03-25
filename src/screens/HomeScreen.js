@@ -3,7 +3,6 @@ import { View, Text, Dimensions, StyleSheet, FlatList, Animated, Alert, Touchabl
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import { AppContext } from '../../context/AppContext';
-import CardItem from '../components/old_components/CardItem';
 import { getCompanyInfo, getProfileInfo } from '../services/authServices';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -11,8 +10,11 @@ import { getActivityList, getUserTasks } from '../services/productServices';
 import Loader from '../components/old_components/Loader';
 import BottomSheetModal from '../components/BottomSheetModal';
 import { Feather } from '@expo/vector-icons';
+import SwipeableTaskCard from '../components/SwipeableTaskCard';
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const { width } = Dimensions.get('window');
+
 
 const Container = styled.View`
   background-color: #f5f5f5;
@@ -80,14 +82,14 @@ const Logo = styled.Image.attrs(() => ({
 const ProfileTextContainer = styled.View`
   display: flex;
   align-items: center;
-  padding: 20px;
+  padding-top: 20px;
 `;
 
 const TaskHeader = styled.Text`
   font-size: 22px;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 `;
 
 const TaskListContainer = styled.View`
@@ -152,6 +154,11 @@ const HomePage = ({ navigation }) => {
     }
   }, [route?.params?.refresh]);
 
+  useEffect(() => {
+    console.log("Date Modal Visible:", isDateModalVisible);
+  }, [isDateModalVisible]);
+  
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -171,9 +178,6 @@ const HomePage = ({ navigation }) => {
     setLoading(false);
   };
 
-  // console.log("Activities===",activities);
-  
-
   const fetchTasks = async (index) => {
     if (!route?.name) return;
 
@@ -187,8 +191,25 @@ const HomePage = ({ navigation }) => {
     setLoading(true);
     try {
       const res = await getUserTasks(taskType, '', '');
-      setFilterData(res.data || []);
-      // console.log("My Task List filterData====>",filterData)
+      // Map the API response to match the expected task structure
+      const mappedTasks = res.data.map(task => ({
+        id: task.id.toString(),
+        title: task.name || "Untitled Task",
+        description: task.remarks || "",
+        taskDate: task.task_date || "N/A",
+        endDate: task.task_date || "N/A",
+        time: `${task.start_time} - ${task.end_time }`|| "",
+        startTime: task.start_time || "",
+        endTime: task.end_time || "",
+        status: task.task_status || "Pending",
+        priority: task.priority === "01" ? "High" : task.priority === "02" ? "Medium" : "Low",
+        taskType: task.task_type_display || task.task_type || "General",
+        customer: task.customer?.name || "No Customer",
+        assignedTo: task.curr_user?.user_nick_name || task.curr_user?.user_name || "Unassigned",
+        owner: task.owner?.user_nick_name || task.owner?.user_name || "No Owner",
+        originalData: task // Keep original data for reference
+      }));
+      setFilterData(mappedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       Alert.alert('Error', 'Failed to fetch tasks. Please try again later.');
@@ -209,18 +230,31 @@ const HomePage = ({ navigation }) => {
   };
 
   const handleSelectStatus = (status) => {
-    console.log('Selected Status:', status);
-    // Filter tasks based on status
-    const filteredTasks = filterData.filter((task) => task.task_status === status);
-    setFilterData(filteredTasks);
+    if (status === 'ALL') {
+      fetchTasks(selectedIndex);
+    } else {
+      const filteredTasks = filterData.filter((task) => task.status === status);
+      setFilterData(filteredTasks);
+    }
     setStatusModalVisible(false);
   };
 
-  console.log("Task List===",filterData)
-
-  const handleMarkAsCompleted = (taskId) => {
-    console.log(`Task ${taskId} marked as completed`);
-    fetchTasks(selectedIndex);
+  const handleMarkAsCompleted = async (taskId) => {
+    try {
+      // Here you would typically call an API to mark the task as completed
+      // For now, we'll update the status in the local state
+      setFilterData(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, status: "Completed" } 
+            : task
+        )
+      );
+      Alert.alert('Success', 'Task marked as completed');
+    } catch (error) {
+      console.error('Error marking task as complete:', error);
+      Alert.alert('Error', 'Failed to mark task as complete');
+    }
   };
 
   return (
@@ -242,61 +276,75 @@ const HomePage = ({ navigation }) => {
           <TaskHeader>My Tasks</TaskHeader>
         </ProfileTextContainer>
 
-        {/* Two Filter Buttons */}
         <ButtonContainer>
-          <FilterButton onPress={() => setDateModalVisible(true)}>
-            <Feather name="calendar" size={20} color="#454545" />
-            <FilterButtonText>Filter by Day</FilterButtonText>
-          </FilterButton>
+        <FilterButton onPress={() => {
+          console.log("Opening Date Filter Modal");
+          setDateModalVisible(true);
+        }}>
+          <Feather name="calendar" size={20} color="#454545" />
+          <FilterButtonText>Filter by Day</FilterButtonText>
+        </FilterButton>
+        
           <FilterButton onPress={() => setStatusModalVisible(true)}>
             <Feather name="filter" size={20} color="#454545" />
             <FilterButtonText>Filter by Status</FilterButtonText>
           </FilterButton>
         </ButtonContainer>
 
+        
+
         <TaskListContainer>
-          <Animated.View style={{ opacity: fadeAnim }}>
-            <FlatList
-              data={filterData}
-              renderItem={({ item }) => (
-                <CardItem
-                  data={item}
-                  navigation={navigation}
-                  onMarkAsCompleted={handleMarkAsCompleted}
-                  colour={'#2575fc'}
-                  icon="assignment-ind"
-                  handleIconPress={() => {}}
-                  handleDisplayPress={() => {}}
-                  buttonTittle="Product Interest"
-                  screen="TaskInterest"
-                  iconName1="preview"
-                  handleIconName1Press={() => {}}
-                />
-              )}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-            />
-          </Animated.View>
+          <GestureHandlerRootView style={styles.listContainer}>
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <FlatList
+                data={filterData}
+                renderItem={({ item }) => (
+                  <SwipeableTaskCard
+                    task={item}
+                    onMarkComplete={handleMarkAsCompleted}
+                  />
+                )}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listContent}
+              />
+            </Animated.View>
+          </GestureHandlerRootView>
         </TaskListContainer>
       </GradientBackground>
 
-      {/* Task Date Selection Modal */}
-      <BottomSheetModal
-        visible={isDateModalVisible}
-        options={['TODAY', 'NEXT 3', 'PAST', 'ALL']}
-        onSelect={handleSelectTaskType}
-        onClose={() => setDateModalVisible(false)}
-      />
+      {isDateModalVisible && (
+        <BottomSheetModal
+          key={isDateModalVisible}
+          visible={isDateModalVisible}
+          options={['TODAY', 'NEXT 3', 'PAST', 'ALL']}
+          onSelect={handleSelectTaskType}
+          onClose={() => setDateModalVisible(false)}
+        />
+      )}
+      
 
-      {/* Task Status Selection Modal */}
       <BottomSheetModal
         visible={isStatusModalVisible}
-        options={['Planned', 'Completed', 'Not Planned']}
+        options={['Planned', 'Completed', 'Not Planned', 'ALL']}
         onSelect={handleSelectStatus}
         onClose={() => setStatusModalVisible(false)}
       />
     </Container>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f8f8f8',
+  },
+  listContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+});
 
 export default HomePage;

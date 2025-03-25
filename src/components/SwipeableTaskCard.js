@@ -1,108 +1,100 @@
-import React, { useRef, useState } from 'react';
-import { StyleSheet, Animated, View, Text } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import TaskCard from './TaskCard';
 
 const SwipeableTaskCard = ({ task, onMarkComplete }) => {
-  const swipeableRef = useRef(null);
-  const [taskCardHeight, setTaskCardHeight] = useState(null);
-  const borderRadius = 10; // Ensuring consistent borderRadius
+  const translateX = useSharedValue(0);
+  const borderRadius = 10;
 
-  const handleSwipeableOpen = () => {
-    if (onMarkComplete) {
-      onMarkComplete(task.id);
-      swipeableRef.current?.close();
-    }
-  };
-
-  const renderRightActions = (progress, dragX) => {
-    const trans = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [0, 100],
-      extrapolate: 'clamp',
+  const swipeGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      translateX.value = Math.max(event.translationX, -140); // Restrict swipe range
+    })
+    .onEnd(() => {
+      if (translateX.value < -100) {
+        // Trigger mark complete action
+        onMarkComplete?.(task.id);
+        translateX.value = withSpring(-200); // Swipe out animation
+      } else {
+        translateX.value = withSpring(0); // Reset position
+      }
     });
 
-    return (
-      <Animated.View
-        style={[
-          styles.rightAction,
-          {
-            height: taskCardHeight, // Match TaskCard height
-            borderRadius: borderRadius, // Match TaskCard borderRadius
-            transform: [{ translateX: trans }],
-          },
-        ]}
-      >
-        <View style={styles.completeButton}>
-          <View style={styles.checkCircle}>
-            <Ionicons name="checkmark" size={24} color="#9c27b0" />
-          </View>
-          <Text style={styles.completeText}>Mark Complete</Text>
-        </View>
-      </Animated.View>
-    );
-  };
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
-    <View
-      onLayout={(event) => {
-        const { height } = event.nativeEvent.layout;
-        setTaskCardHeight(height);
-      }}
-    >
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        onSwipeableOpen={handleSwipeableOpen}
-        rightThreshold={10}
-      >
-        {/* Ensure TaskCard is wrapped to measure its height */}
-        <View
-          style={{ borderRadius: borderRadius, overflow: 'hidden' }} // Ensures rounded corners
-          onLayout={(event) => {
-            const { height } = event.nativeEvent.layout;
-            setTaskCardHeight(height);
-          }}
-        >
+    <GestureDetector gesture={swipeGesture}>
+      <View style={styles.container}>
+        <View style={styles.rightAction}>
+          <View style={styles.completeButton}>
+            <View style={styles.checkCircle}>
+              <Ionicons name="checkmark" size={24} color="#27B02F" />
+            </View>
+            <Text style={styles.completeText}>Mark Complete</Text>
+          </View>
+        </View>
+
+        <Animated.View style={[styles.swipeableCard, animatedStyle]}>
           <TaskCard
             category={task.category}
             title={task.title}
-            startDate={task.startDate}
-            endDate={task.endDate}
+            taskDate={task.taskDate}
+            time={task.time}
             status={task.status}
+            customer={task.customer}
           />
-        </View>
-      </Swipeable>
-    </View>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  swipeableCard: {
+    flex: 1,
+    padding: 5,
+    // borderRadius: 10,
+    // overflow: 'hidden',
+    backgroundColor: 'white',
+    
+    // elevation: 5, // Shadow for Android
+  },
   rightAction: {
-    backgroundColor: '#f8f0fa',
+    position: 'absolute',
+    right: 0,
+    height: '100%',
     width: 140,
+    backgroundColor: '#E7FDE1',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10, // Will be overridden dynamically
+    borderRadius: 10,
   },
   completeButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
   },
   checkCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#9c27b0',
+    borderColor: '#27B02F',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   completeText: {
-    color: '#9c27b0',
+    color: '#27B02F',
     fontWeight: '600',
     fontSize: 14,
   },

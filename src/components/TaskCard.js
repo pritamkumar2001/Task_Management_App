@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 const TaskCard = ({ 
   category, 
   title, 
-  startDate, 
-  endDate, 
+  taskDate, 
+  time,
+  customer,
   status
 }) => {
   // Function to render the status tag
@@ -47,20 +48,24 @@ const TaskCard = ({
   return (
     <View style={styles.cardContainer}>
       <View style={styles.cardContent}>
-        <Text style={styles.category}>{category}</Text>
+        {/* <Text style={styles.category}>{category}</Text> */}
         <Text style={styles.title}>{title}</Text>
         
         <View style={styles.dateContainer}>
           <View style={styles.dateItem}>
-            <Ionicons name="calendar-outline" size={16} color="#9c27b0" />
-            <Text style={styles.dateText}>{startDate}</Text>
+            <Ionicons name="calendar" size={16} color="#9c27b0" />
+            <Text style={styles.dateText}>{taskDate}</Text>
           </View>
           
           <View style={styles.dateItem}>
-            <Ionicons name="flag-outline" size={16} color="#9c27b0" />
-            <Text style={styles.dateText}>{endDate}</Text>
+            <Ionicons name="time" size={16} color="#9c27b0" />
+            <Text style={styles.dateText}>{time}</Text>
           </View>
         </View>
+        <View style={styles.dateItem}>
+            <Ionicons name="location" size={16} color="#9c27b0" />
+            <Text style={styles.dateText}>{customer}</Text>
+          </View>
         
       </View>
         {renderStatusTag()}
